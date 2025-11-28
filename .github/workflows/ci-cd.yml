@@ -34,8 +34,8 @@ jobs:
       - name: Write SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/dd-key.pem
+          chmod 600 ~/.ssh/dd-key.pem
 
       - name: Add EC2 host to known_hosts
         run: |
@@ -43,7 +43,8 @@ jobs:
 
       - name: Deploy on EC2
         run: |
-          ssh -i ~/.ssh/id_rsa ubuntu@13.218.230.140 << 'EOF'
+          ssh -i ~/.ssh/dd-key.pem ubuntu@13.218.230.140 << 'EOF'
+          sudo chown -R ubuntu:ubuntu /opt/mean-app
           cd /opt/mean-app/crud-dd-task-mean-app
           git pull origin main
           docker-compose pull
