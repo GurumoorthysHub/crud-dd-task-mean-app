@@ -1,34 +1,61 @@
-  deploy:
-    needs: build-and-push
+name: CI-CD MEAN App
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Setup SSH Key
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build backend image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/crud-dd-backend:latest ./backend
+
+      - name: Build frontend image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/crud-dd-frontend:latest ./frontend
+
+      - name: Push images to Docker Hub
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/dd-key.pem
-          chmod 600 ~/.ssh/dd-key.pem
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/crud-dd-backend:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/crud-dd-frontend:latest
 
-      - name: Add EC2 to known hosts
-        run: ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+  deploy:
+  needs: build-and-push
+  runs-on: ubuntu-latest
 
-      - name: Deploy on EC2
-        run: |
-          ssh -i ~/.ssh/dd-key.pem ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-          set -e
+  steps:
+    - name: Setup SSH Key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_KEY }}" > ~/.ssh/dd-key.pem
+        chmod 600 ~/.ssh/dd-key.pem
 
-          # Go to project folder (change your real path if different)
-          cd /opt/mean-app/crud-dd-task-mean-app
+    - name: Add EC2 to known hosts
+      run: |
+        ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-          # Force overwrite any manual server changes
-          git fetch origin main
-          git reset --hard origin/main
+    - name: Deploy on EC2
+      run: |
+        ssh -i ~/.ssh/dd-key.pem ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+        set -e
 
-          # Redeploy containers with latest images
-          docker compose pull
-          docker compose down
-          docker compose up -d --remove-orphans
+        cd /opt/mean-app/crud-dd-task-mean-app
 
-          # Show running containers
-          docker ps
-          EOF
+        # Always sync exactly with GitHub
+        git fetch origin main
+        git reset --hard origin/main
+
+        # Use old-style docker-compose binary (this exists on your EC2)
+        docker-compose pull
+        docker-compose down
+        docker-compose up -d
+
+        docker ps
+        EOF
