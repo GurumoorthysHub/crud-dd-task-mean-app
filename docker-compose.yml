@@ -17,6 +17,8 @@ services:
       MONGO_URI: mongodb://mongo:27017/dd_db
     depends_on:
       - mongo
+    ports:
+      - "3000:3000" 
     networks:
       - crud-network
 
