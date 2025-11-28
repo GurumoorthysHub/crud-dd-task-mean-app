@@ -1,45 +1,51 @@
-name: CI-CD MEAN App
+name: CI-CD for MEAN CRUD App
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Login to Docker Hub
+      - name: Docker Login
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-      - name: Build backend image
-        run: docker build --no-cache -t ${{ secrets.DOCKERHUB_USERNAME }}/crud-dd-backend:latest ./backend
+      - name: Build Backend Image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/crud-dd-backend:latest ./backend
 
-      - name: Build frontend image
-        run: docker build --no-cache -t ${{ secrets.DOCKERHUB_USERNAME }}/crud-dd-frontend:latest ./frontend
+      - name: Build Frontend Image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/crud-dd-frontend:latest ./frontend
 
-      - name: Push images to Docker Hub
+      - name: Push Images
         run: |
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/crud-dd-backend:latest
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/crud-dd-frontend:latest
 
   deploy:
-    needs: build-and-push
+    needs: build
     runs-on: ubuntu-latest
-
     steps:
-      - name: Deploy to EC2 using SSH
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            cd /opt/mean-app/crud-dd-task-mean-app
-            git pull origin main
-            docker-compose pull
-            docker-compose down
-            docker-compose up -d
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/dd-key.pem
+          chmod 600 ~/.ssh/dd-key.pem
+
+      - name: Add EC2 to known hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name:  Deploy on EC2
+        run: |
+          ssh -i ~/.ssh/dd-key.pem ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
+            cd /opt/mean-app/crud-dd-task-mean-app &&
+            git pull origin main &&
+            docker compose pull &&
+            docker compose down &&
+            docker compose up -d &&
+            docker ps
+          "
