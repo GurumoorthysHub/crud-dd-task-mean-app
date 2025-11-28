@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   mongo:
     image: mongo:6
@@ -16,8 +14,8 @@ services:
     restart: always
     environment:
       PORT: 3000
-      # use simple connection string; backend must use this env (MONGO_URI)
-      MONGO_URI: mongodb://mongo:27017/crud-db
+      # Backend will read this via process.env.MONGO_URI in db.config.js
+      MONGO_URI: mongodb://mongo:27017/dd_db
     depends_on:
       - mongo
     networks:

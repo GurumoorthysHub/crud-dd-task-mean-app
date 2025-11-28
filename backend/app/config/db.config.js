@@ -1,3 +1,4 @@
+// backend/db.config.js
 module.exports = {
-  url: "mongodb://localhost:27017/dd_db"
+  url: process.env.MONGO_URI || "mongodb://mongo:27017/dd_db"
 };
