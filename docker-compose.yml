@@ -14,7 +14,6 @@ services:
     restart: always
     environment:
       PORT: 3000
-      # Backend will read this via process.env.MONGO_URI in db.config.js
       MONGO_URI: mongodb://mongo:27017/dd_db
     depends_on:
       - mongo
