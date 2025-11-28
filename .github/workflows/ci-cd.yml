@@ -48,14 +48,15 @@ jobs:
 
         cd /opt/mean-app/crud-dd-task-mean-app
 
-        # Always sync exactly with GitHub
+        
         git fetch origin main
         git reset --hard origin/main
 
-        # Use old-style docker-compose binary (this exists on your EC2)
-        docker-compose pull
-        docker-compose down
-        docker-compose up -d
+        
+        docker-compose pull backend
+        docker-compose up -d backend
+        docker logs crud-backend
+
 
         docker ps
         EOF
