@@ -1,3 +1,31 @@
+name: CI-CD MEAN App
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build backend image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/crud-dd-backend:latest ./backend
+
+      - name: Build frontend image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/crud-dd-frontend:latest ./frontend
+
+      - name: Push images to Docker Hub
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/crud-dd-backend:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/crud-dd-frontend:latest
+
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -16,16 +44,16 @@
       - name: Deploy on EC2
         run: |
           ssh -i ~/.ssh/dd-key.pem ubuntu@13.218.230.140 << 'EOF'
-          cd /opt/mean-app/crud-dd-task-mean-app
+          cd /opt/mean-app/crud-dd-task-mean-app || exit 1
 
-          # Auto-handle Nginx local file changes
-          git stash --include-untracked
-          git pull origin main --rebase
+          # Throw away any local changes and sync exactly with GitHub
+          git fetch origin main
+          git reset --hard origin/main
 
-          # Restart containers to pull latest code & config
-          docker compose down
-          docker compose pull
-          docker compose up -d --remove-orphans
+          # Pull latest images and restart stack
+          docker-compose pull
+          docker-compose down
+          docker-compose up -d
 
           docker ps
           EOF
