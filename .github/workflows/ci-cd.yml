@@ -41,7 +41,7 @@ jobs:
           ssh-keyscan -H 54.92.198.110 >> ~/.ssh/known_hosts
       - name: Deploy on EC2
         run: |
-          ssh -i ~/.ssh/dd-key.pem ubuntu@13.218.230.140 << 'EOF'
+          ssh -i ~/.ssh/dd-key.pem ubuntu@54.92.198.110 << 'EOF'
           cd /opt/mean-app/crud-dd-task-mean-app || exit 1
           # Throw away any local changes and sync exactly with GitHub
           git fetch origin main
